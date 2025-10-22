@@ -1,0 +1,27 @@
+{
+  "name": "b2b-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "csv-parser": "^3.2.0",
+    "docx": "^9.5.1",
+    "docx-pdf": "^0.0.1",
+    "docxtemplater": "^3.66.7",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "libreoffice-convert": "^1.7.0",
+    "mongoose": "^8.5.1",
+    "multer": "^2.0.2",
+    "nodemailer": "^7.0.9",
+    "pizzip": "^3.2.0",
+    "socket.io": "^4.7.5"
+  }
+}
