@@ -154,6 +154,7 @@ import membershipRoutes from "./routes/membership.js";
 
 import pricingRoute from "./routes/pricingRoute.js";
 import certificateRoute from "./routes/certificateRoute.js";
+import businessRoute from "./routes/business.js";
 
 dotenv.config();
 
@@ -211,6 +212,12 @@ app.use("/api/membership", membershipRoutes);
 
 app.use("/api/pricing",pricingRoute);
 app.use("/api/certificate",certificateRoute);
+app.use("/api/businesses", businessRoute);
+
+// General health check endpoint
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
 
 // MongoDB connection (only if not already connected)
 if (mongoose.connection.readyState === 0) {
