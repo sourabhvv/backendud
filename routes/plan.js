@@ -357,6 +357,8 @@ router.post("/success", async (req, res) => {
         membershipCompany: org.name || "Organization Member",
         gstStatus: "Unregistered",
       });
+
+      await User.findByIdAndUpdate(req.user.id, { membershipNo: membershipNo });
     }
 
     // Create or update Membership record on successful payment

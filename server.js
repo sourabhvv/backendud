@@ -18,6 +18,7 @@ import adminRoute from "./routes/adminRoute.js";
 import adminMember from "./routes/adminMember.js";
 import userRoutes from "./routes/user.js";
 import membershipRoutes from "./routes/membership.js";
+import invoiceRoutes from "./routes/invoice.js";
 
 import pricingRoute from "./routes/pricingRoute.js";
 import certificateRoute from "./routes/certificateRoute.js";
@@ -28,32 +29,38 @@ dotenv.config();
 const app = express();
 
 const allowedOrigins = [
-  "https://udyamitya-plateform.vercel.app",
-  "https://udyamitya-plateform-qmif.vercel.app",
-  "https://www.udyamiconnect.com",
-  "https://www.udyamiconnect.com/",
   "http://localhost:5173",
   "http://localhost:3000",
   "http://127.0.0.1:5173",
   "http://127.0.0.1:3000",
+  "https://udyamitya-plateform.vercel.app",
+  "https://udyamitya-plateform-qmif.vercel.app",
+  "https://www.udyamiconnect.com",
+  "https://www.udyamiconnect.com",
   "https://secure.payu.in",
   "https://test.payu.in"
 ];
+
+const normalizedAllowedOrigins = allowedOrigins.map((origin) =>
+  origin.trim().replace(/\/$/, "").toLowerCase()
+);
 
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
+      const normalizedOrigin = origin.trim().replace(/\/$/, "").toLowerCase();
+
+      if (normalizedAllowedOrigins.includes(normalizedOrigin)) {
         return callback(null, true);
       }
-      console.log(`CORS not enabled for origin: ${origin}`);
-      return callback(null, false);
+      console.warn(`CORS blocked for origin: ${origin}`);
+      return callback(new Error(`CORS not enabled for origin: ${origin}`));
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Cookie", "Accept", "Origin"],
   })
 );
 
@@ -74,6 +81,7 @@ app.use("/api/adminRoutes", adminRoute);
 app.use("/api/admin", adminMember);
 app.use("/api/user", userRoutes);
 app.use("/api/membership", membershipRoutes);
+app.use("/api/invoices", invoiceRoutes);
 
 app.use("/api/pricing",pricingRoute);
 app.use("/api/certificate",certificateRoute);

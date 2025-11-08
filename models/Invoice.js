@@ -35,6 +35,9 @@ const InvoiceSchema = new mongoose.Schema({
 
   paymentinfo:{
     type:String,
+  },
+  pdfUrl: {
+    type: String,
   }
 }, { timestamps: true });
 
