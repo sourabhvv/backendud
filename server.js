@@ -27,7 +27,6 @@ dotenv.config();
 
 const app = express();
 
-// Middleware setup
 const allowedOrigins = [
   "https://udyamitya-plateform.vercel.app",
   "https://udyamitya-plateform-qmif.vercel.app",
@@ -44,13 +43,11 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
 
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      // Do not throw; disable CORS for unrecognized origins without failing the request
       console.log(`CORS not enabled for origin: ${origin}`);
       return callback(null, false);
     },
