@@ -11,7 +11,7 @@ export const createPricing = async (req, res) => {
     res.status(400).json({ success: false, message: err.message });
   }
 };
-
+// 
 export const getAllPricing = async (req, res) => {
   try {
     const pricings = await pricingService.getAllPricing();
@@ -20,6 +20,19 @@ export const getAllPricing = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+//My pricing if user has a membership plan athan show in the pricng 
+export const getMyPricing = async (req, res) => {
+  try {
+    const pricings = await pricingService.getMyPricing(req.user?.id);
+    res.json({ success: true, data: pricings });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
+
 
 export const getPricingById = async (req, res) => {
   try {

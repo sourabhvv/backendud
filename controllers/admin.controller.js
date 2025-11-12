@@ -2,6 +2,8 @@ import * as adminService from "../services/admin.service.js";
 
 import Membership from "../models/MemberShip.js"; 
 import StageData from "../models/StageData.js";
+import Organization from "../models/Organization.js";
+import User from "../models/User.js";
 
 
 export const getallMembers = async (req, res, next) => {
@@ -43,6 +45,174 @@ export const getMemberInvoice = async (req, res, next) => {
 };
 
 
+
+
+const parseDateValue = (value) => {
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return undefined;
+  }
+
+  return parsed;
+};
+
+export const getMemberOrganization = async (req, res, next) => {
+  try {
+    const { memberId } = req.params;
+
+    if (!memberId) {
+      return res.status(400).json({
+        success: false,
+        message: "Member id is required",
+      });
+    }
+
+    const organization = await Organization.findOne({ owner: memberId });
+
+    if (!organization) {
+      return res.status(404).json({
+        success: false,
+        message: "Organization not found for this member",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: organization,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const updateMemberOrganization = async (req, res, next) => {
+  try {
+    const { memberId } = req.params;
+
+    if (!memberId) {
+      return res.status(400).json({
+        success: false,
+        message: "Member id is required",
+      });
+    }
+
+    const organization = await Organization.findOne({ owner: memberId });
+
+    if (!organization) {
+      return res.status(404).json({
+        success: false,
+        message: "Organization not found for this member",
+      });
+    }
+
+    const {
+      gender,
+      name,
+      email,
+      entityName,
+      companyName,
+      website,
+      dateOfBirth,
+      state,
+      country,
+      phone,
+      countryCode,
+      personalPhone,
+      personalCountryCode,
+      officeAddress,
+      pincode,
+      category,
+      gstNumber,
+      turnover,
+      udyamRegistrationNo,
+      businessType,
+      established,
+      businessEmail,
+      msmeType,
+      aboutUs,
+      termsAccepted,
+      tags,
+      logoUrl,
+      bannerUrl,
+      description,
+      address,
+      plan,
+    } = req.body ?? {};
+
+    if (gender !== undefined) organization.gender = gender || undefined;
+    if (name !== undefined) organization.name = name;
+    if (entityName !== undefined) organization.entityName = entityName;
+    if (companyName !== undefined) organization.companyName = companyName;
+    if (website !== undefined) organization.website = website;
+
+    if (dateOfBirth !== undefined) {
+      organization.dateOfBirth = parseDateValue(dateOfBirth);
+    }
+
+    if (state !== undefined) organization.state = state;
+    if (country !== undefined) organization.country = country;
+    if (phone !== undefined) organization.phone = phone;
+    if (countryCode !== undefined) organization.countryCode = countryCode || "+91";
+    if (personalPhone !== undefined) organization.personalPhone = personalPhone;
+    if (personalCountryCode !== undefined) {
+      organization.personalCountryCode = personalCountryCode || "+91";
+    }
+    if (officeAddress !== undefined) organization.officeAddress = officeAddress;
+    if (pincode !== undefined) organization.pincode = pincode;
+    if (category !== undefined) organization.category = category;
+    if (gstNumber !== undefined) organization.gstNumber = gstNumber;
+    if (turnover !== undefined) organization.turnover = turnover;
+    if (udyamRegistrationNo !== undefined) {
+      organization.udyamRegistrationNo = udyamRegistrationNo;
+    }
+    if (businessType !== undefined) organization.businessType = businessType;
+
+    if (established !== undefined) {
+      organization.established = parseDateValue(established);
+    }
+
+    if (businessEmail !== undefined) organization.businessEmail = businessEmail;
+    if (msmeType !== undefined) organization.msmeType = msmeType;
+    if (aboutUs !== undefined) organization.aboutUs = aboutUs;
+    if (termsAccepted !== undefined) {
+      organization.termsAccepted = Boolean(termsAccepted);
+    }
+    if (tags !== undefined) {
+      organization.tags = Array.isArray(tags) ? tags.slice(0, 4) : [];
+    }
+    if (logoUrl !== undefined) organization.logoUrl = logoUrl;
+    if (bannerUrl !== undefined) organization.bannerUrl = bannerUrl;
+    if (description !== undefined) organization.description = description;
+    if (email !== undefined) organization.email = email;
+    if (address !== undefined) organization.address = address;
+    if (plan !== undefined) organization.plan = plan;
+
+    await organization.save();
+
+    const userUpdates = {};
+    if (typeof name === "string" && name.trim()) {
+      userUpdates.name = name.trim();
+    }
+    if (typeof email === "string" && email.trim()) {
+      userUpdates.email = email.trim();
+    }
+
+    if (Object.keys(userUpdates).length > 0) {
+      await User.findByIdAndUpdate(memberId, userUpdates, { new: false });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: organization,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 
 
 export const migrateMembership = async (req, res, next) => {

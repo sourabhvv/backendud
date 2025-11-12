@@ -193,6 +193,7 @@ import { auth } from "../middleware/auth.js";
 import Member from "../models/Member.js";
 import { Invoice } from "../models/Invoice.js";
 import Membership from "../models/MemberShip.js";
+import Pricing from "../models/pricing.js";
 
 const router = Router();
 
@@ -245,11 +246,20 @@ router.post("/payu", auth, async (req, res) => {
     const surl = `${baseUrl}/api/plans/success`;
     const furl = `${baseUrl}/api/plans/failure`;
     // Pricing: annual 4999, lifetime 49999 + 18% GST
-    const annualAmount = 1;
+
+    // fetch pricing from pricing model
+    const pricing = await Pricing.findOne({ planType: plan });
+
+
+
+
+
+
     const lifetimeBase = 2;
     const lifetimeGst = Math.round(lifetimeBase * 0.18);
     const lifetimeTotal = lifetimeBase + lifetimeGst;
-    const amount = (plan === "annual" ? annualAmount : lifetimeTotal).toFixed(2);
+    const amount = pricing.price;
+
 
     // udf fields
     const udf1 = req.user.id; // user id
@@ -293,6 +303,9 @@ router.post("/payu", auth, async (req, res) => {
     res.status(500).json({ message: "Payment initiation failed" });
   }
 });
+
+
+
 
 // -----------------------------
 // ✅ Success Callback
