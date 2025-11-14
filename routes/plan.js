@@ -194,6 +194,7 @@ import Member from "../models/Member.js";
 import { Invoice } from "../models/Invoice.js";
 import Membership from "../models/MemberShip.js";
 import Pricing from "../models/pricing.js";
+import User from "../models/User.js";
 
 const router = Router();
 
@@ -204,6 +205,41 @@ const PAYU_BASE_URL = "https://secure.payu.in/_payment";
 
 // Simple cooldown (60s per user)
 const payuCooldownMap = new Map();
+
+const normalizeBaseUrl = (value = "") => {
+  if (!value || typeof value !== "string") return "";
+  return value.trim().replace(/\/$/, "");
+};
+
+const clientBaseUrl =
+  normalizeBaseUrl(
+    process.env.PAYMENT_CLIENT_BASE_URL ||
+      process.env.CLIENT_PAYMENT_BASE_URL ||
+      process.env.CLIENT_APP_URL ||
+      process.env.CLIENT_URL ||
+      process.env.FRONTEND_URL ||
+      process.env.REACT_APP_FRONTEND_URL
+  ) || "http://localhost:5173";
+
+const awsurl = "https://d1rkqggupxnv65.cloudfront.net/api/"
+
+const paymentSuccessRedirect =`${awsurl}/payment-success`;
+
+const paymentFailureRedirect =`${awsurl}/payment-failure`;
+const buildRedirectUrl = (base, params = {}) => {
+  try {
+    const url = new URL(base);
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        url.searchParams.set(key, value);
+      }
+    });
+    return url.toString();
+  } catch (error) {
+    console.warn("Invalid redirect URL provided:", base, error);
+    return base;
+  }
+};
 
 // -----------------------------
 // 🚀 Initiate Payment
@@ -229,42 +265,64 @@ router.post("/payu", auth, async (req, res) => {
     }
 
     const { plan, name, email, phone } = req.body;
+    const normalizedPlan = (plan || "").toLowerCase();
+
+    if (!["annual", "lifetime"].includes(normalizedPlan)) {
+      return res
+        .status(400)
+        .json({ message: "Unsupported plan selected for payment." });
+    }
 
     // Find organization
     const org = await Organization.findOne({ owner: req.user.id });
-    if (!org) return res.status(400).json({ message: "Create org profile first" });
+    if (!org)
+      return res.status(400).json({ message: "Create org profile first" });
 
-    org.plan = plan;
+    org.plan = normalizedPlan;
     await org.save();
 
     // PayU parameters
     const txnid = "Txn_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
     const productinfo =
-      plan === "annual" ? "Annual Subscription" : "Lifetime Subscription";
+      normalizedPlan === "annual"
+        ? "Annual Subscription"
+        : "Lifetime Subscription";
     const firstname = name;
     const baseUrl = process.env.SERVER_PUBLIC_URL || "http://localhost:5000";
     const surl = `${baseUrl}/api/plans/success`;
     const furl = `${baseUrl}/api/plans/failure`;
-    // Pricing: annual 4999, lifetime 49999 + 18% GST
+    // Pricing: fetch active pricing record (latest) or fallback defaults
+    const pricing = await Pricing.findOne({
+      planType: normalizedPlan,
+      status: "active",
+    })
+      .sort({ updatedAt: -1 })
+      .lean();
 
-    // fetch pricing from pricing model
-    const pricing = await Pricing.findOne({ planType: plan });
+    const defaultAmount =
+      normalizedPlan === "annual"
+        ? Number(process.env.DEFAULT_ANNUAL_PRICE || 4999)
+        : Number(process.env.DEFAULT_LIFETIME_PRICE || 59999);
 
+    const amountValue =
+      pricing && typeof pricing.price === "number" && pricing.price > 0
+        ? pricing.price
+        : defaultAmount;
 
+    if (!Number.isFinite(amountValue) || amountValue <= 0) {
+      return res.status(500).json({
+        message:
+          "Pricing is not configured correctly. Please contact support before proceeding with payment.",
+      });
+    }
 
-
-
-
-    const lifetimeBase = 2;
-    const lifetimeGst = Math.round(lifetimeBase * 0.18);
-    const lifetimeTotal = lifetimeBase + lifetimeGst;
-    const amount = pricing.price;
-
+    const amount = amountValue.toFixed(2);
+    const currency = pricing?.currency || "INR";
 
     // udf fields
     const udf1 = req.user.id; // user id
     const udf2 = org._id.toString(); // org id
-    const udf3 = plan; // plan name
+    const udf3 = normalizedPlan; // plan name
     const udf4 = "";
     const udf5 = "";
     const udf6 = "";
@@ -286,6 +344,7 @@ router.post("/payu", auth, async (req, res) => {
       key: PAYU_KEY,
       txnid,
       amount,
+      currency,
       productinfo,
       firstname,
       email,
@@ -371,7 +430,11 @@ router.post("/success", async (req, res) => {
         gstStatus: "Unregistered",
       });
 
-      await User.findByIdAndUpdate(req.user.id, { membershipNo: membershipNo });
+      if (udf1) {
+        await User.findByIdAndUpdate(udf1, { membershipNo });
+      }
+    } else if (udf1) {
+      await User.findByIdAndUpdate(udf1, { membershipNo });
     }
 
     // Create or update Membership record on successful payment
@@ -428,10 +491,15 @@ router.post("/success", async (req, res) => {
       status: "paid",
     });
 
-    // Set CORS headers for success callback page rendering in browser
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.send("✅ Payment Successful! Invoice generated.");
+    const successUrl = buildRedirectUrl(paymentSuccessRedirect, {
+      txnid,
+      paymentId: mihpayid,
+      plan: udf3,
+      amount,
+      status,
+    });
+
+    return res.redirect(302, successUrl);
   } catch (err) {
     console.error("Success callback error:", err);
     res.status(500).send("Error in payment success");
@@ -472,10 +540,14 @@ router.post("/failure", async (req, res) => {
     }
 
     console.log("Payment Failed:", req.body);
-    // Set CORS headers for failure callback page rendering
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.send("❌ Payment Failed! You can try again.");
+    const failureUrl = buildRedirectUrl(paymentFailureRedirect, {
+      txnid,
+      status,
+      plan: udf3,
+      amount,
+    });
+
+    return res.redirect(302, failureUrl);
   } catch (err) {
     console.error("Failure callback error:", err);
     res.status(500).send("Error in payment failure");

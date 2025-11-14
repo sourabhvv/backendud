@@ -67,6 +67,9 @@ router.post('/', auth, async (req, res) => {
     aboutUs,
     termsAccepted,
     tags,
+    panNo,
+    yearOfIncorporation,
+    membershipSource,
     // legacy/optional fields for backward compatibility
     logoUrl,
     bannerUrl,
@@ -75,6 +78,13 @@ router.post('/', auth, async (req, res) => {
     address,
     plan
   } = req.body;
+  const parsedDateOfBirth = dateOfBirth ? new Date(dateOfBirth) : undefined;
+  const parsedEstablished = established ? new Date(established) : undefined;
+  const establishedYear =
+    parsedEstablished && !Number.isNaN(parsedEstablished.getTime())
+      ? parsedEstablished.getFullYear().toString()
+      : undefined;
+
   let org = await Organization.findOne({ owner: req.user.id });
   if (!org) {
     // Generate membership number with UC202501 prefix
@@ -90,7 +100,7 @@ router.post('/', auth, async (req, res) => {
       entityName,
       companyName,
       website,
-      dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+      dateOfBirth: parsedDateOfBirth,
       state,
       country,
       phone,
@@ -104,7 +114,7 @@ router.post('/', auth, async (req, res) => {
       turnover,
       udyamRegistrationNo,
       businessType,
-      established: established ? new Date(established) : undefined,
+      established: parsedEstablished,
       businessEmail,
       msmeType,
       aboutUs,
@@ -130,11 +140,9 @@ router.post('/', auth, async (req, res) => {
       membershipCompany: org.name || org.companyName || 'Organization Member',
       gstStatus: gstNumber ? 'Registered' : 'Unregistered',
       GSTNumber: gstNumber,
-
-      owner: req.user.id,
-      gstNumber: gstNumber,
-      yearOfIncorporation: yearOfIncorporation,
-      membershipSource: membershipSource,
+      panNo,
+      yearOfIncorporation: yearOfIncorporation || establishedYear,
+      membershipSource,
       source: "Udhyami Connect"
 
     });
@@ -158,7 +166,7 @@ router.post('/', auth, async (req, res) => {
       entityName,
       companyName,
       website,
-      dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : org.dateOfBirth,
+      dateOfBirth: parsedDateOfBirth || org.dateOfBirth,
       state,
       country,
       phone,
@@ -172,7 +180,7 @@ router.post('/', auth, async (req, res) => {
       turnover,
       udyamRegistrationNo,
       businessType,
-      established: established ? new Date(established) : org.established,
+      established: parsedEstablished || org.established,
       businessEmail,
       msmeType,
       aboutUs,

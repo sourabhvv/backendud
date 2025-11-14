@@ -241,7 +241,7 @@ router.post("/verify-register-otp", async (req, res) => {
     otpStore.delete(email);
 
     const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role },
+      { id: user._id, email: user.email, role: user.role, name: user.name },
       JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -308,7 +308,7 @@ router.post("/verify-otp", async (req, res) => {
     if (!user) return res.status(400).json({ message: "User not found" });
 
     const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role },
+      { id: user._id, email: user.email, role: user.role, name: user.name },
       JWT_SECRET,
       { expiresIn: "7d" }
     );
