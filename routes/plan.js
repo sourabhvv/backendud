@@ -248,6 +248,31 @@ const buildRedirectUrl = (base, params = {}) => {
   }
 };
 
+// Map PayU payment modes to valid enum values
+const normalizePaymentSource = (mode) => {
+  if (!mode) return "netbanking"; // default fallback
+  
+  const modeLower = mode.toLowerCase();
+  
+  // Map common PayU payment modes to valid enum values
+  const modeMap = {
+    "qr": "upi",           // QR payments are UPI-based
+    "upi": "upi",
+    "card": "card",
+    "debit card": "card",
+    "credit card": "card",
+    "netbanking": "netbanking",
+    "nb": "netbanking",
+    "wallet": "wallet",
+    "cash": "cash",
+    "cheque": "cheque",
+    "credit": "card",
+    "debit": "card",
+  };
+  
+  return modeMap[modeLower] || "netbanking"; // fallback to netbanking
+};
+
 // -----------------------------
 // 🚀 Initiate Payment
 // -----------------------------
@@ -497,7 +522,7 @@ async function processPaymentSuccess(req, res) {
           paymentId: paymentIdValue,
           amount: baseAmount,
           membershipNo: member.membershipNo,
-          source: (mode || "netbanking").toLowerCase(),
+          source: normalizePaymentSource(mode),
           status: "success",
         },
       ],
