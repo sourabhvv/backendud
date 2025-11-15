@@ -221,11 +221,18 @@ const clientBaseUrl =
       process.env.REACT_APP_FRONTEND_URL
   ) || "http://localhost:5173";
 
-const awsurl = "https://d1rkqggupxnv65.cloudfront.net/api/"
+// Frontend base URL for payment redirects
+const frontendBaseUrl = normalizeBaseUrl(
+  process.env.PAYMENT_CLIENT_BASE_URL ||
+  process.env.CLIENT_PAYMENT_BASE_URL ||
+  process.env.CLIENT_APP_URL ||
+  process.env.CLIENT_URL ||
+  process.env.FRONTEND_URL ||
+  process.env.REACT_APP_FRONTEND_URL
+) || "https://d1rkqggupxnv65.cloudfront.net";
 
-const paymentSuccessRedirect =`${awsurl}/payment-success`;
-
-const paymentFailureRedirect =`${awsurl}/payment-failure`;
+const paymentSuccessRedirect = `${frontendBaseUrl}/payment-success`;
+const paymentFailureRedirect = `${frontendBaseUrl}/payment-failure`;
 const buildRedirectUrl = (base, params = {}) => {
   try {
     const url = new URL(base);
@@ -366,13 +373,15 @@ router.post("/payu", auth, async (req, res) => {
 
 
 
-// -----------------------------
-// ✅ Success Callback
-// -----------------------------
-router.post("/success", async (req, res) => {
+// Helper function to process payment success
+async function processPaymentSuccess(req, res) {
   try {
+    // Handle both GET (query params) and POST (body) requests from PayU
+    const params = req.method === 'GET' ? req.query : req.body;
+    
     const {
       mihpayid,
+      paymentId, // PayU sometimes uses paymentId instead of mihpayid
       status,
       txnid,
       amount,
@@ -392,9 +401,13 @@ router.post("/success", async (req, res) => {
       hash,
       key,
       firstname,
-    } = req.body;
+    } = params;
+    
+    // Use paymentId if mihpayid is not available
+    const paymentIdValue = mihpayid || paymentId;
 
-    console.log("Payment Success:", req.body);
+    console.log("Payment Success:", params);
+    console.log("Payment method:", req.method);
 
     if (status !== "success") {
       return res.status(400).send("Payment not successful");
@@ -451,7 +464,7 @@ router.post("/success", async (req, res) => {
 
     const existingMembership = await Membership.findOne({ membershipNo });
     if (existingMembership) {
-      existingMembership.membershipStatus = "active";
+      existingMembership.membershipStatus = "Active";
       existingMembership.JoinDate = nowDate;
       existingMembership.ExpireDate = expireDate;
       existingMembership.packageName = productinfo || (udf3 || "");
@@ -459,7 +472,7 @@ router.post("/success", async (req, res) => {
     } else {
       await Membership.create({
         membershipNo,
-        membershipStatus: "active",
+        membershipStatus: "Active",
         JoinDate: nowDate,
         ExpireDate: expireDate,
         packageName: productinfo || (udf3 || ""),
@@ -481,7 +494,7 @@ router.post("/success", async (req, res) => {
       totalAmount,
       payments: [
         {
-          paymentId: mihpayid,
+          paymentId: paymentIdValue,
           amount: baseAmount,
           membershipNo: member.membershipNo,
           source: (mode || "netbanking").toLowerCase(),
@@ -493,7 +506,7 @@ router.post("/success", async (req, res) => {
 
     const successUrl = buildRedirectUrl(paymentSuccessRedirect, {
       txnid,
-      paymentId: mihpayid,
+      paymentId: paymentIdValue,
       plan: udf3,
       amount,
       status,
@@ -504,7 +517,17 @@ router.post("/success", async (req, res) => {
     console.error("Success callback error:", err);
     res.status(500).send("Error in payment success");
   }
-});
+}
+
+// -----------------------------
+// ✅ Success Callback - POST (from PayU server)
+// -----------------------------
+router.post("/success", processPaymentSuccess);
+
+// -----------------------------
+// ✅ Success Callback - GET (redirect from PayU)
+// -----------------------------
+router.get("/success", processPaymentSuccess);
 
 // -----------------------------
 // ❌ Failure Callback
