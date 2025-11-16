@@ -222,16 +222,19 @@ const clientBaseUrl =
   ) || "http://localhost:5173";
 
 // Frontend base URL for payment redirects
-const frontendBaseUrl = normalizeBaseUrl(
-  process.env.PAYMENT_CLIENT_BASE_URL ||
-  process.env.CLIENT_PAYMENT_BASE_URL ||
-  process.env.CLIENT_APP_URL ||
-  process.env.CLIENT_URL ||
-  process.env.FRONTEND_URL ||
-  process.env.REACT_APP_FRONTEND_URL
-) || "https://d1rkqggupxnv65.cloudfront.net";
+// const frontendBaseUrl = normalizeBaseUrl(
+//   process.env.PAYMENT_CLIENT_BASE_URL ||
+//   process.env.CLIENT_PAYMENT_BASE_URL ||
+//   process.env.CLIENT_APP_URL ||
+//   process.env.CLIENT_URL ||
+//   process.env.FRONTEND_URL ||
+//   process.env.REACT_APP_FRONTEND_URL
+// ) || "http://localhost:5173";
 
-const paymentSuccessRedirect = `${frontendBaseUrl}/payment-success`;
+
+const frontendBaseUrl = "https://www.udyamiconnect.com";
+
+const paymentSuccessRedirect = `${frontendBaseUrl}/profile`;
 const paymentFailureRedirect = `${frontendBaseUrl}/payment-failure`;
 const buildRedirectUrl = (base, params = {}) => {
   try {
@@ -320,7 +323,7 @@ router.post("/payu", auth, async (req, res) => {
         ? "Annual Subscription"
         : "Lifetime Subscription";
     const firstname = name;
-    const baseUrl = process.env.SERVER_PUBLIC_URL || "http://localhost:5000";
+    const baseUrl = "https://www.udyamiconnect.com";
     const surl = `${baseUrl}/api/plans/success`;
     const furl = `${baseUrl}/api/plans/failure`;
     // Pricing: fetch active pricing record (latest) or fallback defaults
@@ -537,7 +540,16 @@ async function processPaymentSuccess(req, res) {
       status,
     });
 
-    return res.redirect(302, successUrl);
+
+    // return res.json({
+    //   success: true,
+    //   message: "Payment successful",
+    //   data: {
+    //     successUrl,
+    //   },
+    // });
+
+     return res.redirect(302, successUrl);
   } catch (err) {
     console.error("Success callback error:", err);
     res.status(500).send("Error in payment success");
@@ -551,7 +563,6 @@ router.post("/success", processPaymentSuccess);
 
 // -----------------------------
 // ✅ Success Callback - GET (redirect from PayU)
-// -----------------------------
 router.get("/success", processPaymentSuccess);
 
 // -----------------------------

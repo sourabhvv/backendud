@@ -48,7 +48,9 @@ const normalizedAllowedOrigins = allowedOrigins.map((origin) =>
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
+      // Allow requests without Origin header (e.g., curl, server-to-server)
+      // and browsers that send literal "null" for file:// or opaque origins.
+      if (!origin || origin === "null") return callback(null, true);
 
       const normalizedOrigin = origin.trim().replace(/\/$/, "").toLowerCase();
 
